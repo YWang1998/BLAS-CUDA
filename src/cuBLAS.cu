@@ -395,10 +395,10 @@ namespace cuBLAS {
 		/*
 		int* ptr;
 		checkCudaErrors(cudaGetSymbolAddress((void**)&ptr, d_Nnode)); // On device side, it doesn't really care what is the type that the pointer is pointing to
-																	  // It only needs a void pointer to allocate the memory space.
+										// It only needs a void pointer to allocate the memory space.
 		*/
 		checkCudaErrors(cudaMemcpyToSymbol(d_Nnode, &h_symbol, sizeof(int))); // For device variable, you can also assign a void* to any type variable (e.g int/double/double)
-																			  // For host variable, however, you can only assign pointer to array or pointer type variable.
-																			  // & operator is needed for host variable to be assigned by pointer
+											// For host variable, however, you can only assign pointer to array or pointer type variable.
+											// & operator is needed for host variable to be assigned by pointer
 	}
 }
