@@ -284,7 +284,7 @@ namespace cuBLAS {
 		const double* d_v,
 		double* d_spMV)
 	{
-		checkCudaErrors(cudaMemset(d_spMV, 0, Nnode * sizeof(double)));
+		cudaMemset(d_spMV, 0, Nnode * sizeof(double));
 		spMV_thread_kernel << <Grid, Block >> > (d_ia_expand, d_ja_expand, d_a, d_v, d_spMV);
 	}
 
@@ -296,7 +296,7 @@ namespace cuBLAS {
 		double* d_spMV)
 	{
 
-		checkCudaErrors(cudaMemset(d_spMV, 0, Nnode * sizeof(double)));
+		cudaMemset(d_spMV, 0, Nnode * sizeof(double));
 
 		switch (Block.x)
 		{
@@ -319,7 +319,7 @@ namespace cuBLAS {
 
 		int Grid_unrolled = (Grid.x - 8*(Grid.x / 8)) + Grid.x / 8;
 		
-		checkCudaErrors(cudaMemset(d_product, 0, sizeof(double))); // Initialize to 0
+		cudaMemset(d_product, 0, sizeof(double)); // Initialize to 0
 
 		switch (Block.x)
 		{
@@ -342,7 +342,7 @@ namespace cuBLAS {
 
 		}
 
-		checkCudaErrors(cudaMemcpy(product, d_product, sizeof(double), cudaMemcpyDeviceToHost));
+		cudaMemcpy(product, d_product, sizeof(double), cudaMemcpyDeviceToHost);
 
 	}
 
@@ -352,7 +352,7 @@ namespace cuBLAS {
 
 		int Grid_unrolled = (Grid.x - 8 * (Grid.x / 8)) + Grid.x / 8;
 
-		checkCudaErrors(cudaMemset(d_sum, 0, sizeof(double))); // Initialize to 0
+		cudaMemset(d_sum, 0, sizeof(double)); // Initialize to 0
 
 		switch (Block.x)
 		{
@@ -375,7 +375,7 @@ namespace cuBLAS {
 
 		}
 
-		checkCudaErrors(cudaMemcpy(sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost));
+		cudaMemcpy(sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost);
 
 		sum[0] = sqrt(sum[0]); // doing the square root on the host side
 
@@ -384,7 +384,7 @@ namespace cuBLAS {
 	/* Return the vector product of vector y = y + scale * x */
 	void axpy(dim3& Grid, dim3& Block, const double* __restrict__ x, double* __restrict__ y, const double& scale)
 	{
-		checkCudaErrors(cudaMemcpyToSymbol(d_scale, &scale, sizeof(double))); // get the constant scale factor
+		cudaMemcpyToSymbol(d_scale, &scale, sizeof(double)); // get the constant scale factor
 
 		axpy_kernal << <Grid, Block >> > (x, y);
 
@@ -394,10 +394,10 @@ namespace cuBLAS {
 	{
 		/*
 		int* ptr;
-		checkCudaErrors(cudaGetSymbolAddress((void**)&ptr, d_Nnode)); // On device side, it doesn't really care what is the type that the pointer is pointing to
+		cudaGetSymbolAddress((void**)&ptr, d_Nnode); // On device side, it doesn't really care what is the type that the pointer is pointing to
 										// It only needs a void pointer to allocate the memory space.
 		*/
-		checkCudaErrors(cudaMemcpyToSymbol(d_Nnode, &h_symbol, sizeof(int))); // For device variable, you can also assign a void* to any type variable (e.g int/double/double)
+		cudaMemcpyToSymbol(d_Nnode, &h_symbol, sizeof(int)); // For device variable, you can also assign a void* to any type variable (e.g int/double/double)
 											// For host variable, however, you can only assign pointer to array or pointer type variable.
 											// & operator is needed for host variable to be assigned by pointer
 	}
