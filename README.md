@@ -9,3 +9,5 @@ CUDA based BLAS functions with complete loop unrolling and reduction for:
 6. nrm2 - norm2 of a vector without multiphase model of accumulation as did in cuBLAS implementation (https://docs.nvidia.com/cuda/cublas/)
 7. axpy - axpy function
 8. get_const_int_symbol - set the value for __constant__ d_Nnode, which is the length of the vector 
+
+NOTE: sparse matrix is assummed to have CSR (compressed row) format
