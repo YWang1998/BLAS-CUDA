@@ -20,8 +20,8 @@ template <int blockDIM> __global__
 void spMV_sparse(const double* __restrict__ a_expand,
 				 const int* __restrict__ ja_expand,
 				 const double* __restrict__ v,
-				 double* v_expand,
-				 double* spMV)
+				 double* __restrict__ v_expand,
+				 double* __restrict__ spMV)
 {
 	unsigned int tid = threadIdx.x + blockIdx.x * blockDim.x;
 	unsigned int lane = tid & 31; // lane ID within a warp
@@ -99,7 +99,7 @@ void spMV_warp_kernel(const int* d_ia, const int* d_ja, const double* d_val, con
 	cublasDdot api performance is invariant to debug/release mode, which means the optimization is already done by Nvidia build-in api function
 */
 template <int blockDIM> __global__ 
-void dot_product_kernel_unroll(const double* __restrict__ x, const double* __restrict__ y, double* dot)
+void dot_product_kernel_unroll(const double* __restrict__ x, const double* __restrict__ y, double* __restrict__ dot)
 {
 	unsigned int tid = threadIdx.x + blockDim.x * blockIdx.x * 8; // block unroll factor of 8
 
@@ -181,7 +181,7 @@ __global__ void axpy_kernal(const double* __restrict__ x, double* __restrict__ y
 	More than 2 - 3X improvement over cublas APi due to removal of multi-mode computation 
 */
 template <int blockDIM> __global__
-void nrm2_kernel_unroll(const double* __restrict__ x, double* sum)
+void nrm2_kernel_unroll(const double* __restrict__ x, double* __restrict__ sum)
 {
 	unsigned int tid = threadIdx.x + blockDim.x * blockIdx.x * 8; // block unroll factor of 8
 
@@ -259,9 +259,9 @@ namespace cuBLAS {
 	}
 
 	void spMV(dim3& Grid, dim3& Block, 
-			const double* d_a_expand, 
-			const int* d_ja_expand, 
-			const double* d_v, double* d_v_expanded, double* d_spMV)
+			const double* __restrict__ d_a_expand,
+			const int* __restrict__ d_ja_expand,
+			const double* __restrict__ d_v, double* __restrict__ d_v_expanded, double* __restrict__ d_spMV)
 	{
 		switch (Block.x)
 		{
@@ -284,7 +284,7 @@ namespace cuBLAS {
 		const double* d_v,
 		double* d_spMV)
 	{
-		cudaMemset(d_spMV, 0, Nnode * sizeof(double));
+		checkCudaErrors(cudaMemset(d_spMV, 0, Nnode * sizeof(double)));
 		spMV_thread_kernel << <Grid, Block >> > (d_ia_expand, d_ja_expand, d_a, d_v, d_spMV);
 	}
 
@@ -296,7 +296,7 @@ namespace cuBLAS {
 		double* d_spMV)
 	{
 
-		cudaMemset(d_spMV, 0, Nnode * sizeof(double));
+		checkCudaErrors(cudaMemset(d_spMV, 0, Nnode * sizeof(double)));
 
 		switch (Block.x)
 		{
@@ -314,12 +314,12 @@ namespace cuBLAS {
 	}
 
 	/* Return the dot product of vector 1 (V_1) and vector 2 (V_2) to a host pointer - product */
-	void dot_product(dim3& Grid, dim3& Block, const double* __restrict__ d_V_1, const double* __restrict__ d_V_2, double* product, double* __restrict__ d_product)
+	void dot_product(dim3& Grid, dim3& Block, const double* __restrict__ d_V_1, const double* __restrict__ d_V_2, double* __restrict__ product, double* __restrict__ d_product)
 	{
 
 		int Grid_unrolled = (Grid.x - 8*(Grid.x / 8)) + Grid.x / 8;
 		
-		cudaMemset(d_product, 0, sizeof(double)); // Initialize to 0
+		checkCudaErrors(cudaMemset(d_product, 0, sizeof(double))); // Initialize to 0
 
 		switch (Block.x)
 		{
@@ -342,17 +342,17 @@ namespace cuBLAS {
 
 		}
 
-		cudaMemcpy(product, d_product, sizeof(double), cudaMemcpyDeviceToHost);
+		checkCudaErrors(cudaMemcpy(product, d_product, sizeof(double), cudaMemcpyDeviceToHost));
 
 	}
 
 	/* Return the nrm2 product of vector V to a host pointer - sum */
-	void nrm2(dim3& Grid, dim3& Block, const double* __restrict__ V, double* sum, double* __restrict__ d_sum)
+	void nrm2(dim3& Grid, dim3& Block, const double* __restrict__ V, double* __restrict__ sum, double* __restrict__ d_sum)
 	{
 
 		int Grid_unrolled = (Grid.x - 8 * (Grid.x / 8)) + Grid.x / 8;
 
-		cudaMemset(d_sum, 0, sizeof(double)); // Initialize to 0
+		checkCudaErrors(cudaMemset(d_sum, 0, sizeof(double))); // Initialize to 0
 
 		switch (Block.x)
 		{
@@ -375,7 +375,7 @@ namespace cuBLAS {
 
 		}
 
-		cudaMemcpy(sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost);
+		checkCudaErrors(cudaMemcpy(sum, d_sum, sizeof(double), cudaMemcpyDeviceToHost));
 
 		sum[0] = sqrt(sum[0]); // doing the square root on the host side
 
@@ -384,7 +384,7 @@ namespace cuBLAS {
 	/* Return the vector product of vector y = y + scale * x */
 	void axpy(dim3& Grid, dim3& Block, const double* __restrict__ x, double* __restrict__ y, const double& scale)
 	{
-		cudaMemcpyToSymbol(d_scale, &scale, sizeof(double)); // get the constant scale factor
+		checkCudaErrors(cudaMemcpyToSymbol(d_scale, &scale, sizeof(double))); // get the constant scale factor
 
 		axpy_kernal << <Grid, Block >> > (x, y);
 
@@ -394,11 +394,11 @@ namespace cuBLAS {
 	{
 		/*
 		int* ptr;
-		cudaGetSymbolAddress((void**)&ptr, d_Nnode); // On device side, it doesn't really care what is the type that the pointer is pointing to
-										// It only needs a void pointer to allocate the memory space.
+		checkCudaErrors(cudaGetSymbolAddress((void**)&ptr, d_Nnode)); // On device side, it doesn't really care what is the type that the pointer is pointing to
+																	  // It only needs a void pointer to allocate the memory space.
 		*/
-		cudaMemcpyToSymbol(d_Nnode, &h_symbol, sizeof(int)); // For device variable, you can also assign a void* to any type variable (e.g int/double/double)
-											// For host variable, however, you can only assign pointer to array or pointer type variable.
-											// & operator is needed for host variable to be assigned by pointer
+		checkCudaErrors(cudaMemcpyToSymbol(d_Nnode, &h_symbol, sizeof(int))); // For device variable, you can also assign a void* to any type variable (e.g int/double/double)
+																			  // For host variable, however, you can only assign pointer to array or pointer type variable.
+																			  // & operator is needed for host variable to be assigned by pointer
 	}
 }
